@@ -1,0 +1,20 @@
+{
+  "app": { "name": "FrostMonitor" },
+  "polling_interval_ms": 1000,
+  "autostart": false,
+  "gamesense": {
+    "address": "",
+    "discovery_file": "C:/ProgramData/SteelSeries/SteelSeries Engine 3/coreProps.json",
+    "register_game": true
+  },
+  "events": {
+    "cpu": { "name": "CPU_STATS", "min": 0, "max": 100 },
+    "gpu": { "name": "GPU_STATS", "min": 0, "max": 100 }
+  },
+  "logging": {
+    "level": "debug",
+    "dir": "logs",
+    "max_bytes": 5242880,
+    "max_files": 5
+  }
+}

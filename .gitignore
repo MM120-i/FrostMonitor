@@ -1,0 +1,90 @@
+# Build directories
+/build/
+/build*/
+/cmake-build-*/
+/out/
+/bin/
+/lib/
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+install_manifest.txt
+
+# Visual Studio
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.vcxproj.user
+*.vcxproj.filters
+*.pdb
+*.idb
+*.ipch
+*.aps
+*.ncb
+*.opendb
+*.obj
+*.tlog
+*.lastbuildstate
+*.cachefile
+*.log
+*.ilk
+
+# Visual Studio Code
+.vscode/
+.vscode/ipch/
+.vscode/launch.json
+.vscode/settings.json
+
+
+# Compiler outputs
+*.o
+*.obj
+*.lo
+*.la
+*.al
+*.libs
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+
+# Static libs
+*.a
+*.lib
+
+# Debug / profiling
+*.gcda
+*.gcno
+*.gcov
+
+# vcpkg
+vcpkg_installed/
+vcpkg-configuration.json
+
+
+# Cache / temp
+*.tmp
+*.temp
+*.log
+*.cache
+*.swp
+*.swo
+
+# Generated files
+*.generated.*
+*.json.generated
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Others
+plan.txt

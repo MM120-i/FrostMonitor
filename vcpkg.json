@@ -1,0 +1,6 @@
+{
+  "name": "frostmonitor",
+  "version-string": "0.1.0",
+  "description": "CPU/GPU Telemetry to SteelSeries GameSense OLED",
+  "dependencies": ["nlohmann-json", "spdlog", "cpp-httplib", "catch2"]
+}
