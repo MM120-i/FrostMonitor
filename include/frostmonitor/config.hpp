@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <expected>
 #include <filesystem>
 #include <string>
@@ -35,7 +36,7 @@ namespace frostmonitor {
         LoggingConfig logging;
     };
 
-    enum class ConfigError {
+    enum class ConfigError : std::uint8_t {
         FileNotFound,
         ParseError,
         ValidationError,

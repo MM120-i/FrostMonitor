@@ -2,15 +2,19 @@
 #include <memory>
 #include <filesystem>
 #include <atomic>
-#include <cstdio>
 #include <csignal>
+#include <print>
+#include <string_view> 
 
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
 #include "../include/frostmonitor/config.hpp"
-#include "../include/frostmonitor/version.hpp"
+#include "../include/frostmonitor/version.hpp"                        
+#include "../include/frostmonitor/cpu.hpp"      
+#include "../include/frostmonitor/gpu.hpp"      
+#include "../include/frostmonitor/format.hpp"   
 
 namespace {
     std::atomic_bool gRunning{true};
@@ -46,11 +50,49 @@ namespace {
         logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] %v");
         spdlog::set_default_logger(logger);
     }
+
+    auto runCheckSensors() -> int {
+        auto cpu = frostmonitor::CpuMonitor::create();
+
+        if (!cpu) {
+            std::println(stderr, "CPU sensor: {}", frostmonitor::toString(cpu.error()));
+            return 2;
+        }
+
+        auto gpu = frostmonitor::GpuMonitor::create();
+
+        if (!gpu) {
+            std::println(stderr, "GPU sensor: {}", frostmonitor::toString(gpu.error()));
+            return 2;
+        }
+
+        auto cpuSample = cpu->read();
+
+        if (!cpuSample) {
+            std::println(stderr, "CPU read: {}", frostmonitor::toString(cpuSample.error()));
+            return 2;
+        }
+
+        auto gpuSample = gpu->read();
+
+        if (!gpuSample) {
+            std::println(stderr, "GPU read: {}", frostmonitor::toString(gpuSample.error()));
+            return 2;
+        }
+
+        std::println("{}", frostmonitor::formatCpuLine(cpuSample->tempC, cpuSample->utilizationPct));
+        std::println("{}", frostmonitor::formatGpuLine(gpuSample->tempC, gpuSample->utilizationPct));
+        
+        return 0;
+    }
 }
 
-int main(int argc, char *argv[]){
+auto main(int argc, char *argv[]) -> int {
     std::signal(SIGINT, handleSignal);
     std::signal(SIGTERM, handleSignal);
+
+    if (argc > 1 && std::string_view(argv[1]) == "--check-sensors")
+        return runCheckSensors();
 
     const std::filesystem::path configPath = 
         argc > 1 ? std::filesystem::path{argv[1]}
@@ -59,7 +101,7 @@ int main(int argc, char *argv[]){
     auto config = frostmonitor::loadConfig(configPath);
 
     if(!config){
-        std::fprintf(stderr, "Failed to load config '%s'\n", configPath.string().c_str());
+        std::println(stderr, "Failed to load config '{}'", configPath.string());
         exit(EXIT_FAILURE);
     }
 
@@ -69,7 +111,7 @@ int main(int argc, char *argv[]){
     spdlog::info("config: {}", configPath.string());
     spdlog::debug("polling interval: {} ms", config->pollingInterval.count());
 
-    unsigned long cycle = 0l;
+    unsigned long cycle = 0L;
 
     while(gRunning.load()){
         // Placeholder stuff for now:

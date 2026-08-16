@@ -14,9 +14,8 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
 
-set(CORE_SOURCES src/config.cpp)
+set(CORE_SOURCES src/config.cpp src/cpu.cpp src/gpu.cpp src/format.cpp)
 
-# Sanitized core: linked into the app (ASAN instrumented)
 add_library(FrostMonitorCore STATIC ${CORE_SOURCES})
 
 target_include_directories(FrostMonitorCore PUBLIC include)
@@ -31,7 +30,6 @@ endif()
 
 target_link_libraries(FrostMonitorCore PUBLIC nlohmann_json::nlohmann_json)
 
-# Clean core: same sources, no ASAN - linked into tests (Catch2 is prebuilt without ASAN)
 add_library(FrostMonitorCoreClean STATIC ${CORE_SOURCES})
 
 target_include_directories(FrostMonitorCoreClean PUBLIC include)
@@ -46,6 +44,11 @@ endif()
 
 target_link_libraries(FrostMonitorCoreClean PUBLIC nlohmann_json::nlohmann_json)
 
+if(MSVC)
+    target_link_libraries(FrostMonitorCore PUBLIC pdh.lib)
+    target_link_libraries(FrostMonitorCoreClean PUBLIC pdh.lib)
+endif()
+
 add_executable(FrostMonitor
     src/main.cpp
 )
@@ -53,6 +56,13 @@ add_executable(FrostMonitor
 if(MSVC)
     target_compile_options(FrostMonitor PRIVATE /W4 /WX /permissive- /utf-8 $<$<CONFIG:Debug>:/fsanitize=address>)
     target_link_options(FrostMonitor PRIVATE $<$<CONFIG:Debug>:/INCREMENTAL:NO>)
+
+    get_filename_component(MSVC_TOOLS_BIN "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    add_custom_command(TARGET FrostMonitor POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${MSVC_TOOLS_BIN}/clang_rt.asan_dynamic-x86_64.dll"
+            "$<TARGET_FILE_DIR:FrostMonitor>"
+    )
 endif()
 
 target_link_libraries(FrostMonitor PRIVATE
