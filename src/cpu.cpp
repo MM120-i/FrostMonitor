@@ -34,23 +34,25 @@ namespace frostmonitor {
     }
 
     auto findThermalZoneInstance() -> std::expected<std::wstring, CpuError> {
-        DWORD bytes = 0;
-        
-        PdhEnumObjectItemsW(nullptr, nullptr, L"Thermal Zone Information", nullptr, &bytes, nullptr, nullptr, PERF_DETAIL_WIZARD, 0);
+        DWORD counterChars = 0;
+        DWORD instanceChars = 0;
 
-        if(bytes == 0)
+        if(PdhEnumObjectItemsW(nullptr, nullptr, L"Thermal Zone Information",
+                               nullptr, &counterChars, nullptr, &instanceChars,
+                               PERF_DETAIL_WIZARD, 0) != ERROR_SUCCESS || instanceChars == 0)
             return std::unexpected(CpuError::ThermalZoneNotFound);
 
-        std::wstring buffer((bytes / sizeof(wchar_t)) + 2, L'\0');
-        auto count = static_cast<DWORD>(buffer.size() * sizeof(wchar_t));
+        std::wstring instances(instanceChars + 1, L'\0');
 
-        if(PdhEnumObjectItemsW(nullptr, nullptr, L"Thermal Zone Information", nullptr, &count, buffer.data(), &count, PERF_DETAIL_WIZARD, 0) != ERROR_SUCCESS)
+        if(PdhEnumObjectItemsW(nullptr, nullptr, L"Thermal Zone Information",
+                               nullptr, &counterChars, instances.data(), &instanceChars,
+                               PERF_DETAIL_WIZARD, 0) != ERROR_SUCCESS)
             return std::unexpected(CpuError::ThermalZoneNotFound);
 
-        if(buffer.empty())
+        if(instances.empty() || instances.front() == L'\0')
             return std::unexpected(CpuError::ThermalZoneNotFound);
 
-        return std::wstring(buffer.data()); // NOLINT(readability-redundant-string-cstr)
+        return std::wstring(instances.data()); // NOLINT(readability-redundant-string-cstr)
     }
 
     auto CpuMonitor::create() -> std::expected<CpuMonitor, CpuError> {

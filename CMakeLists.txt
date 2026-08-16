@@ -59,9 +59,11 @@ if(MSVC)
 
     get_filename_component(MSVC_TOOLS_BIN "${CMAKE_CXX_COMPILER}" DIRECTORY)
     add_custom_command(TARGET FrostMonitor POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${MSVC_TOOLS_BIN}/clang_rt.asan_dynamic-x86_64.dll"
-            "$<TARGET_FILE_DIR:FrostMonitor>"
+        COMMAND ${CMAKE_COMMAND}
+            -DASAN_DLL="${MSVC_TOOLS_BIN}/clang_rt.asan_dynamic-x86_64.dll"
+            -DDEST="$<TARGET_FILE_DIR:FrostMonitor>"
+            -DCONFIG=$<CONFIG>
+            -P "${CMAKE_SOURCE_DIR}/cmake/copy_asan_dll.cmake"
     )
 endif()
 

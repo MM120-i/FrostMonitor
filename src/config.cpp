@@ -42,7 +42,7 @@ namespace frostmonitor {
             auto gameSense = require<nlohmann::json>(root, "gamesense");
 
             if(gameSense){
-                cfg.gamesense.address = gameSense->value("address", cfg.gamesense.discoveryFile.string());
+                cfg.gamesense.address = gameSense->value("address", cfg.gamesense.address);
                 cfg.gamesense.discoveryFile = gameSense->value("discovery_file", cfg.gamesense.discoveryFile.string());
                 cfg.gamesense.registerGame = gameSense->value("register_game", true);
             }

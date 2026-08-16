@@ -56,9 +56,10 @@ ctest --preset %PRESET% || exit /b 1
 exit /b 0
 
 :lint
-set "CLANG_TIDY=C:\Program Files\LLVM\bin\clang-tidy.exe"
+if not defined CLANG_TIDY set "CLANG_TIDY=C:\Program Files\LLVM\bin\clang-tidy.exe"
+if not exist "%CLANG_TIDY%" set "CLANG_TIDY=C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\Llvm\bin\clang-tidy.exe"
 if not exist "%CLANG_TIDY%" (
-    echo [dev] clang-tidy not found at %CLANG_TIDY%
+    echo [dev] clang-tidy not found - install LLVM or set CLANG_TIDY to its path
     exit /b 1
 )
 echo [dev] configuring lint compile database (Ninja)...
@@ -66,7 +67,7 @@ call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\v
 if errorlevel 1 exit /b 1
 cmake --preset lint || exit /b 1
 echo [dev] running clang-tidy...
-"%CLANG_TIDY%" -p build\lint src\main.cpp src\config.cpp src\cpu.cpp src\gpu.cpp src\format.cpp tests\test_config.cpp tests\test_format.cpp tests\test_version.cpp || exit /b 1
+"%CLANG_TIDY%" --warnings-as-errors=* -p build\lint src\main.cpp src\config.cpp src\cpu.cpp src\gpu.cpp src\format.cpp tests\test_config.cpp tests\test_format.cpp tests\test_version.cpp || exit /b 1
 echo [dev] lint ok
 exit /b 0
 
@@ -82,7 +83,7 @@ echo.
 echo   build [debug^|release]  configure + compile (default: release)
 echo   run   [debug^|release]  launch the exe with config\config.json
 echo   test  [debug^|release]  run the unit tests via ctest (default: debug)
-echo   lint                   run clang-tidy on all sources
+echo   lint                   run clang-tidy on all sources (CLANG_TIDY env overrides path)
 echo   clean                  delete the build\ folder
 echo   (no args)              build release, then run it
 exit /b 0

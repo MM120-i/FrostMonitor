@@ -71,9 +71,11 @@ namespace frostmonitor {
       temperature_(others.temperature_), utilization_(others.utilization_) {}
 
     GpuMonitor &GpuMonitor::operator = (GpuMonitor &&other) noexcept {  // NOLINT(modernize-use-trailing-return-type)
-        if(this != &other){
-            if(lib_ != nullptr)
+if(this != &other){
+            if(lib_ != nullptr){
                 shutdown_();
+                FreeLibrary(lib_);
+            }
 
             lib_ = std::exchange(other.lib_, nullptr);
             device_ = std::exchange(other.device_, nullptr);
