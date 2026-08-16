@@ -23,20 +23,20 @@ namespace frostmonitor {
         ReadFailed,
     };
 
-    auto toString(CpuError) -> const char*;
+auto toString(CpuError error) -> const char*;
 
     class CpuMonitor {
     private:
         struct QueryDeleter {
             void operator()(void *q) const noexcept {
-                if(q)
+                if(q) // NOLINT(readability-implicit-bool-conversion)
                     PdhCloseQuery(static_cast<PDH_HQUERY>(q));
             }
         };
 
         using QueryHandle = std::unique_ptr<void, QueryDeleter>;
         
-        CpuMonitor(QueryHandle, PDH_HCOUNTER , PDH_HCOUNTER);
+        CpuMonitor(QueryHandle query, PDH_HCOUNTER utilCounter, PDH_HCOUNTER tempCounter);
 
         QueryHandle query_;
         PDH_HCOUNTER utilCounter_ = nullptr;

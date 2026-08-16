@@ -24,7 +24,7 @@ namespace frostmonitor {
     auto GpuMonitor::create() -> std::expected<GpuMonitor, GpuError> {
         HMODULE lib = LoadLibraryW(L"nvml.dll");
 
-        if(!lib)
+        if(!lib) // NOLINT(readability-implicit-bool-conversion)
             return std::unexpected(GpuError::DllLoadFailed);
 
         auto init = reinterpret_cast<InitFn>(GetProcAddress(lib, "nvmlInit_v2"));
@@ -33,7 +33,7 @@ namespace frostmonitor {
         auto temperature = reinterpret_cast<GetTemperatureFn>(GetProcAddress(lib, "nvmlDeviceGetTemperature"));
         auto utilization= reinterpret_cast<GetUtilizationFn>(GetProcAddress(lib, "nvmlDeviceGetUtilizationRates"));
 
-        if(!init || !shutdown || !getDevice || !temperature || !utilization){
+        if(!init || !shutdown || !getDevice || !temperature || !utilization){ // NOLINT(readability-implicit-bool-conversion)
             FreeLibrary(lib);
             return std::unexpected(GpuError::FunctionLookupFailed);
         }

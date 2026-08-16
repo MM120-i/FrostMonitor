@@ -32,7 +32,7 @@ namespace frostmonitor {
         using GetUtilizationFn = nvmlReturn_t(__cdecl*)(nvmlDevice_t, nvmlUtilization_t*);
         using ErrorStringFn = const char *(__cdecl*)(nvmlReturn_t);
 
-        GpuMonitor(HMODULE lib, nvmlDevice_t, InitFn, ShutdownFn, GetTemperatureFn, GetUtilizationFn);
+        GpuMonitor(HMODULE lib, nvmlDevice_t device, InitFn init, ShutdownFn shutdown, GetTemperatureFn temperature, GetUtilizationFn utilization);
         
         HMODULE lib_ = nullptr;
         nvmlDevice_t device_ = nullptr;

@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <atomic>
 #include <csignal>
+#include <exception>
 #include <print>
 #include <string_view> 
 
@@ -17,9 +18,10 @@
 #include "../include/frostmonitor/format.hpp"   
 
 namespace {
-    std::atomic_bool gRunning{true};
+    std::atomic_bool gRunning{true}; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
-    void handleSignal(int){
+    void handleSignal(int signum){
+        (void)signum;
         gRunning.store(false);
     }
 
@@ -87,10 +89,7 @@ namespace {
     }
 }
 
-auto main(int argc, char *argv[]) -> int {
-    std::signal(SIGINT, handleSignal);
-    std::signal(SIGTERM, handleSignal);
-
+auto run(int argc, char **argv) -> int {
     if (argc > 1 && std::string_view(argv[1]) == "--check-sensors")
         return runCheckSensors();
 
@@ -102,7 +101,7 @@ auto main(int argc, char *argv[]) -> int {
 
     if(!config){
         std::println(stderr, "Failed to load config '{}'", configPath.string());
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     setupLogging(*config);
@@ -122,5 +121,19 @@ auto main(int argc, char *argv[]) -> int {
     spdlog::info("shutdown signal received, exiting cleanly");
     spdlog::shutdown();
 
-    return 0;
+    return EXIT_SUCCESS;
+}
+
+auto main(int argc, char **argv) -> int { // NOLINT(bugprone-exception-escape)
+    std::signal(SIGINT, handleSignal);
+    std::signal(SIGTERM, handleSignal);
+
+    try {
+        return run(argc, argv);
+    }
+    catch(const std::exception &e){
+        std::println(stderr, "Fatal error: {}", e.what());
+        spdlog::shutdown();
+        return EXIT_FAILURE;
+    }
 }
