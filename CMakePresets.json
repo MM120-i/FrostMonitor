@@ -10,7 +10,7 @@
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_TARGET_TRIPLET": "x64-windows",
-        "CMAKE_CXX_CLANG_TIDY": "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/Llvm/bin/clang-tidy.exe"
+        "CMAKE_CXX_CLANG_TIDY": "$env{CLANG_TIDY}"
       }
     },
     {
