@@ -4,7 +4,7 @@
 
 namespace frostmonitor {
     #ifndef FROSTMON_VERSION
-        #define FROSTMON_VERSION "0.0.0-dev"
+        #define FROSTMON_VERSION "0.0.0-dev" // NOLINT(cppcoreguidelines-macro-usage)
     #endif
 
     inline constexpr std::string_view appName{"FrostMonitor"};

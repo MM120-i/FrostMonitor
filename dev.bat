@@ -8,6 +8,7 @@ set "RELEASE_EXE=build\release\Release\FrostMonitor.exe"
 if /i "%~1"=="build"   goto :build
 if /i "%~1"=="run"     goto :run
 if /i "%~1"=="test"    goto :test
+if /i "%~1"=="lint"    goto :lint
 if /i "%~1"=="clean"   goto :clean
 if /i "%~1"=="help"    goto :help
 goto :default
@@ -54,6 +55,22 @@ echo [dev] running tests (%PRESET%)...
 ctest --preset %PRESET% || exit /b 1
 exit /b 0
 
+:lint
+if not defined CLANG_TIDY set "CLANG_TIDY=C:\Program Files\LLVM\bin\clang-tidy.exe"
+if not exist "%CLANG_TIDY%" set "CLANG_TIDY=C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\Llvm\bin\clang-tidy.exe"
+if not exist "%CLANG_TIDY%" (
+    echo [dev] clang-tidy not found - install LLVM or set CLANG_TIDY to its path
+    exit /b 1
+)
+echo [dev] configuring lint compile database (Ninja)...
+call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat" >nul
+if errorlevel 1 exit /b 1
+cmake --preset lint || exit /b 1
+echo [dev] running clang-tidy...
+"%CLANG_TIDY%" --warnings-as-errors=* -p build\lint src\main.cpp src\config.cpp src\cpu.cpp src\gpu.cpp src\format.cpp tests\test_config.cpp tests\test_format.cpp tests\test_version.cpp || exit /b 1
+echo [dev] lint ok
+exit /b 0
+
 :clean
 echo [dev] removing build directories...
 if exist build rmdir /s /q build
@@ -66,6 +83,7 @@ echo.
 echo   build [debug^|release]  configure + compile (default: release)
 echo   run   [debug^|release]  launch the exe with config\config.json
 echo   test  [debug^|release]  run the unit tests via ctest (default: debug)
+echo   lint                   run clang-tidy on all sources (CLANG_TIDY env overrides path)
 echo   clean                  delete the build\ folder
 echo   (no args)              build release, then run it
 exit /b 0

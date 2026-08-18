@@ -25,9 +25,11 @@ namespace {
         }
 
         TempJsonFile(const TempJsonFile &) = delete;
-        TempJsonFile& operator = (const TempJsonFile &) = delete;
+        TempJsonFile& operator = (const TempJsonFile &) = delete; // NOLINT(modernize-use-trailing-return-type)
+        TempJsonFile(TempJsonFile &&) = delete;
+        TempJsonFile& operator = (TempJsonFile &&) = delete; // NOLINT(modernize-use-trailing-return-type)
 
-        [[nodiscard]] const std::filesystem::path& path() const noexcept { 
+        [[nodiscard]] auto path() const noexcept -> const std::filesystem::path & { 
             return path_; 
         }
 
@@ -109,7 +111,7 @@ TEST_CASE("empty object falls back to defaults"){
     CHECK(config->gpuEvent.name == "GPU_STATS");
     CHECK(config->logging.level == "debug");
     CHECK(config->logging.dir == "logs");
-    CHECK(config->logging.maxBytes == 5 * 1024 * 1024);
+    CHECK(config->logging.maxBytes == 5ULL * 1024 * 1024);
     CHECK(config->logging.maxFiles == 5);
 }
 

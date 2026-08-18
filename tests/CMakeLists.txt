@@ -2,6 +2,7 @@ find_package(Catch2 CONFIG REQUIRED)
 
 add_executable(FrostMonitorTests
     test_config.cpp
+    test_format.cpp
     test_version.cpp
 )
 

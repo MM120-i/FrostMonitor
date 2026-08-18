@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <expected>
 #include <filesystem>
 #include <string>
@@ -21,7 +22,7 @@ namespace frostmonitor {
     struct LoggingConfig {
         std::string level{"debug"};
         std::filesystem::path dir{"logs"};
-        std::size_t maxBytes{5 * 1024 * 1024};
+        std::size_t maxBytes{5ULL * 1024 * 1024};
         std::size_t maxFiles{5};
     };
 
@@ -30,16 +31,16 @@ namespace frostmonitor {
         std::chrono::milliseconds pollingInterval{1000};
         bool autoStart{false};
         GamesenseConfig gamesense;
-        EventConfig cpuEvent{"CPU_STATS", 0.0, 100.0};
-        EventConfig gpuEvent{"GPU_STATS", 0.0, 100.0};
+        EventConfig cpuEvent{.name = "CPU_STATS", .min = 0.0, .max = 100.0};
+        EventConfig gpuEvent{.name = "GPU_STATS", .min = 0.0, .max = 100.0};
         LoggingConfig logging;
     };
 
-    enum class ConfigError {
+    enum class ConfigError : std::uint8_t {
         FileNotFound,
         ParseError,
         ValidationError,
     };
 
-    auto loadConfig(const std::filesystem::path &) -> std::expected<Config, ConfigError>;
+    auto loadConfig(const std::filesystem::path &path) -> std::expected<Config, ConfigError>;
 };

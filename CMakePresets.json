@@ -10,7 +10,7 @@
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_TARGET_TRIPLET": "x64-windows",
-        "CMAKE_CXX_CLANG_TIDY": "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/Llvm/bin/clang-tidy.exe"
+        "CMAKE_CXX_CLANG_TIDY": "$env{CLANG_TIDY}"
       }
     },
     {
@@ -24,6 +24,18 @@
         "VCPKG_TARGET_TRIPLET": "x64-windows-static",
         "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE": "ON"
+      }
+    },
+    {
+      "name": "lint",
+      "displayName": "Lint (Ninja compile database)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/lint",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     }
   ],
