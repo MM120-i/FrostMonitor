@@ -249,6 +249,11 @@ namespace frostmonitor {
                     break;
                 }
             }
+
+            if(state_.load(std::memory_order_relaxed) == State::Live){
+                state_.store(State::Disconnected, std::memory_order_relaxed);
+                connectionLost_.store(false, std::memory_order_relaxed);
+            }
         }
     }
 
