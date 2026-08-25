@@ -4,6 +4,7 @@ add_executable(FrostMonitorTests
     test_config.cpp
     test_format.cpp
     test_version.cpp
+    test_gamesense.cpp
 )
 
 target_link_libraries(FrostMonitorTests PRIVATE
