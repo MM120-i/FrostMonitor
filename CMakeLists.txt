@@ -14,7 +14,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
 
-set(CORE_SOURCES src/config.cpp src/cpu.cpp src/gpu.cpp src/format.cpp)
+set(CORE_SOURCES src/config.cpp src/cpu.cpp src/gpu.cpp src/format.cpp src/gamesense.cpp)
 
 add_library(FrostMonitorCore STATIC ${CORE_SOURCES})
 
@@ -28,7 +28,7 @@ if(MSVC)
     target_compile_options(FrostMonitorCore PRIVATE /W4 /WX /permissive- /utf-8 $<$<CONFIG:Debug>:/fsanitize=address>)
 endif()
 
-target_link_libraries(FrostMonitorCore PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(FrostMonitorCore PUBLIC nlohmann_json::nlohmann_json httplib::httplib spdlog::spdlog)
 
 add_library(FrostMonitorCoreClean STATIC ${CORE_SOURCES})
 
@@ -42,7 +42,7 @@ if(MSVC)
     target_compile_options(FrostMonitorCoreClean PRIVATE /W4 /WX /permissive- /utf-8)
 endif()
 
-target_link_libraries(FrostMonitorCoreClean PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(FrostMonitorCoreClean PUBLIC nlohmann_json::nlohmann_json httplib::httplib spdlog::spdlog)
 
 if(MSVC)
     target_link_libraries(FrostMonitorCore PUBLIC pdh.lib)
@@ -67,11 +67,7 @@ if(MSVC)
     )
 endif()
 
-target_link_libraries(FrostMonitor PRIVATE
-    FrostMonitorCore
-    spdlog::spdlog
-    httplib::httplib
-)
+target_link_libraries(FrostMonitor PRIVATE FrostMonitorCore)
 
 enable_testing()
 add_subdirectory(tests)

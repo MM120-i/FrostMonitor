@@ -13,6 +13,7 @@
 
 #include "../include/frostmonitor/config.hpp"
 #include "../include/frostmonitor/version.hpp"                        
+#include "../include/frostmonitor/gamesense.hpp"
 #include "../include/frostmonitor/cpu.hpp"      
 #include "../include/frostmonitor/gpu.hpp"      
 #include "../include/frostmonitor/format.hpp"   
@@ -87,15 +88,97 @@ namespace {
         
         return 0;
     }
+
+    auto runPipeline(const frostmonitor::Config &config, bool demoMode) -> int {
+        std::optional<frostmonitor::CpuMonitor> cpu;
+        std::optional<frostmonitor::GpuMonitor> gpu;
+
+        if(!demoMode){
+            auto created = frostmonitor::CpuMonitor::create();
+
+            if(!created){
+                spdlog::error("CPU Sensor: {}", frostmonitor::toString(created.error()));
+                return 2;   // whats 2??
+            }
+
+            cpu = std::move(*created);
+            auto gpuCreated = frostmonitor::GpuMonitor::create();
+
+            if(!gpuCreated){
+                spdlog::error("GPU Sensor: {}", frostmonitor::toString(gpuCreated.error()));
+                return 2;
+            }
+
+            gpu = std::move(*gpuCreated);
+        }
+
+        auto client = frostmonitor::createGameSenseClient(config);
+
+        if(client)
+            spdlog::info("GameSense client ready for game '{}'", client->game());
+        else
+            spdlog::info("GameSense disabled (register_game = false)");
+
+        unsigned long cycle = 0L;
+
+        while(gRunning.load()){
+            std::string cpuLine;
+            std::string gpuLine;
+
+            if(demoMode){
+                cpuLine = "CPU 62°C | 34%";
+                gpuLine = "GPU 55°C | 12%";
+            }
+            else {
+                auto cpuSample = cpu->read();
+
+                if(!cpuSample){
+                    spdlog::warn("CPU Read failed: {}", frostmonitor::toString(cpuSample.error()));
+                    std::this_thread::sleep_for(config.pollingInterval);
+                    continue;
+                }
+
+                auto gpuSample = gpu->read();
+
+                if(!gpuSample){
+                    spdlog::warn("GPU Read failed: {}", frostmonitor::toString(gpuSample.error()));
+                    std::this_thread::sleep_for(config.pollingInterval);
+                    continue;
+                }
+
+                cpuLine = frostmonitor::formatCpuLine(cpuSample->tempC, cpuSample->utilizationPct);
+                gpuLine = frostmonitor::formatGpuLine(gpuSample->tempC, gpuSample->utilizationPct);
+            }
+
+            spdlog::debug("cycle {}: {} | {}", cycle++, cpuLine, gpuLine);
+
+            if(client){
+                client->send(config.cpuEvent.name, cpuLine);
+                client->send(config.gpuEvent.name, gpuLine);
+            }
+
+            std::this_thread::sleep_for(config.pollingInterval);
+        }
+
+        return EXIT_SUCCESS;
+    }
 }
 
 auto run(int argc, char **argv) -> int {
     if (argc > 1 && std::string_view(argv[1]) == "--check-sensors")
         return runCheckSensors();
 
-    const std::filesystem::path configPath = 
-        argc > 1 ? std::filesystem::path{argv[1]}
-                 : std::filesystem::path{"config/config.json"}; 
+    bool demoMode = false;
+    int argIndex = 1;
+
+    if(argc > 1 && std::string_view(argv[1]) == "--demo"){
+        demoMode = true;
+        argIndex++;
+    }
+
+    const std::filesystem::path configPath =
+        argc > argIndex ? std::filesystem::path{argv[argIndex]}
+                        : std::filesystem::path{"config/config.json"};
 
     auto config = frostmonitor::loadConfig(configPath);
 
@@ -110,18 +193,7 @@ auto run(int argc, char **argv) -> int {
     spdlog::info("config: {}", configPath.string());
     spdlog::debug("polling interval: {} ms", config->pollingInterval.count());
 
-    unsigned long cycle = 0L;
-
-    while(gRunning.load()){
-        // Placeholder stuff for now:
-        spdlog::info("cycle {}: telemetry pipeline not wired yet", cycle++);
-        std::this_thread::sleep_for(config->pollingInterval);
-    }
-
-    spdlog::info("shutdown signal received, exiting cleanly");
-    spdlog::shutdown();
-
-    return EXIT_SUCCESS;
+    return runPipeline(*config, demoMode);
 }
 
 auto main(int argc, char **argv) -> int { // NOLINT(bugprone-exception-escape)
