@@ -43,15 +43,15 @@ namespace frostmonitor {
             std::chrono::milliseconds heartbeatInterval{10000};
         };
 
-        GameSenseClient(Settings, std::string, std::vector<GameSenseEvent>);
+        GameSenseClient(Settings settings, std::string game, std::vector<GameSenseEvent> events);
         ~GameSenseClient();
         GameSenseClient(const GameSenseClient &) = delete;
         GameSenseClient(GameSenseClient &&) = delete;
 
         auto operator = (const GameSenseClient &) -> GameSenseClient& = delete;
         auto operator = (GameSenseClient &&) -> GameSenseClient& = delete;
-        void send(std::string_view, std::string);
-        static auto discoverAddress(const std::filesystem::path &) -> std::string;
+        void send(std::string_view eventName, std::string line);
+        static auto discoverAddress(const std::filesystem::path &file) -> std::string;
 
         [[nodiscard]] auto state() const noexcept -> State;
         [[nodiscard]] auto game() const noexcept -> std::string_view;
@@ -59,10 +59,10 @@ namespace frostmonitor {
         [[nodiscard]] auto reconnectFailures() const noexcept -> std::uint64_t;
 
     private:
-        void runWorker(const std::stop_token &);
+        void runWorker(const std::stop_token &stopToken);
         auto registerOnEngine() -> bool;
-        auto postSucceeds(const std::string &, const nlohmann::json &) -> bool;
-        auto makeClient(const std::string &) -> std::unique_ptr<httplib::Client>;
+        auto postSucceeds(const std::string &path, const nlohmann::json &body) -> bool;
+        auto makeClient(const std::string &url) const -> std::unique_ptr<httplib::Client>;
 
         std::jthread worker_;
         std::condition_variable_any cv_;

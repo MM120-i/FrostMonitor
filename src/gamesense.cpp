@@ -84,8 +84,8 @@ namespace frostmonitor {
             spdlog::warn("GameSense not reachable at startup - will keep trying in the background");
 
         std::vector<GameSenseEvent> events {
-            {config.cpuEvent.name, config.cpuEvent.min, config.cpuEvent.max},
-            {config.gpuEvent.name, config.gpuEvent.min, config.gpuEvent.max},
+            {.name=config.cpuEvent.name, .min=config.cpuEvent.min, .max=config.cpuEvent.max},
+            {.name=config.gpuEvent.name, .min=config.gpuEvent.min, .max=config.gpuEvent.max},
         };
         
         return std::make_unique<GameSenseClient>(std::move(settings), config.appName, std::move(events));
@@ -93,11 +93,12 @@ namespace frostmonitor {
 
     GameSenseClient::GameSenseClient(Settings settings, std::string game, std::vector<GameSenseEvent> events)
         : settings_(std::move(settings)), game_(std::move(game)), events_(std::move(events)) {
-        worker_ = std::jthread([this](const std::stop_token &stopToken) {
+        worker_ = std::jthread([this](const std::stop_token &stopToken) -> void {
             runWorker(stopToken);
         });
     }
 
+    // NOLINTNEXTLINE(bugprone-exception-escape)
     GameSenseClient::~GameSenseClient(){
         worker_.request_stop();
 
@@ -110,7 +111,7 @@ namespace frostmonitor {
         }
 
         try{
-            std::lock_guard lock(httpMutex_);
+            std::scoped_lock lock(httpMutex_);
 
             for(const auto &event : events_){
                 if(http_ == nullptr)
@@ -151,6 +152,7 @@ namespace frostmonitor {
         return failures_.load(std::memory_order_relaxed);
     }
 
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity)
     void GameSenseClient::runWorker(const std::stop_token &stopToken){
         auto backOff = settings_.initialBackoff;
         bool wasLive = false;
@@ -161,7 +163,7 @@ namespace frostmonitor {
             if(!firstCycle){
                 std::unique_lock lock(cvMutex_);
                 
-                cv_.wait_for(lock, stopToken, backOff, [] {
+                cv_.wait_for(lock, stopToken, backOff, []() -> bool {
                     return false;
                 });
 
@@ -190,7 +192,7 @@ namespace frostmonitor {
             }
 
             {
-                std::lock_guard lock(httpMutex_);
+                std::scoped_lock lock(httpMutex_);
                 http_ = makeClient(url);
             }
 
@@ -231,7 +233,7 @@ namespace frostmonitor {
 
                 {
                     std::unique_lock lock(cvMutex_);
-                    kicked = cv_.wait_for(lock, stopToken, settings_.heartbeatInterval, [this]{
+                    kicked = cv_.wait_for(lock, stopToken, settings_.heartbeatInterval, [this]() -> bool {
                         return connectionLost_.load(std::memory_order_relaxed);
                     });
                 }
@@ -257,7 +259,7 @@ namespace frostmonitor {
         }
     }
 
-    auto GameSenseClient::makeClient(const std::string &url) -> std::unique_ptr<httplib::Client> {
+    auto GameSenseClient::makeClient(const std::string &url) const -> std::unique_ptr<httplib::Client> {
         auto [host, port] = splitHostPort(url);
 
         if(host.empty() || port <= 0 || port > PORT_LIMIT)
@@ -313,7 +315,7 @@ namespace frostmonitor {
         if(http_ == nullptr)
             return false;
 
-        std::lock_guard lock(httpMutex_);
+        std::scoped_lock lock(httpMutex_);
         auto response = http_->Post(path, body.dump(), "application/json");
 
         if(response == nullptr){
@@ -346,7 +348,7 @@ namespace frostmonitor {
         bool sent = false;
 
         {
-            std::lock_guard lock(httpMutex_);
+            std::scoped_lock lock(httpMutex_);
 
             if(http_ != nullptr){
                 auto response = http_->Post("/event", frame.dump(), "application/json");

@@ -1,8 +1,10 @@
+#include <algorithm>
 #include <atomic>
 #include <condition_variable>
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <map>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -21,7 +23,7 @@ namespace {
     };
 
     auto defaultEvents() -> std::vector<frostmonitor::GameSenseEvent> {
-        return {{"CPU_STATS", 0.0, 100.0}, {"GPU_STATS", 0.0, 100.0}};
+        return {{.name="CPU_STATS", .min=0.0, .max=100.0}, {.name="GPU_STATS", .min=0.0, .max=100.0}};
     }
 
     auto testSettings(const std::string &url) -> frostmonitor::GameSenseClient::Settings {
@@ -66,19 +68,20 @@ namespace {
 
     auto countCalls(const std::vector<RequestLog> &calls, const char *path) -> std::size_t {
         return static_cast<std::size_t>(std::count_if(calls.begin(), calls.end(),
-                                                      [path](const auto &c){ return c.path == path; }));
+                                                       [path](const auto &c) -> bool { return c.path == path; }));
     }
 
+    // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
     class MockEngine {
     public:
-        int port = 0;
+        int port = 0; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
 
         ~MockEngine(){
             stop();
         }
 
         auto setup() -> bool {
-            const auto handler = [this](const httplib::Request &req, httplib::Response &res){
+            const auto handler = [this](const httplib::Request &req, httplib::Response &res) -> void {
                 nlohmann::json body = nullptr;
 
                 try{
@@ -92,8 +95,8 @@ namespace {
                 }
 
                 {
-                    std::lock_guard lock(mutex_);
-                    records_.push_back({req.path, body});
+                    std::scoped_lock lock(mutex_);
+                    records_.push_back({.path=req.path, .body=body});
 
                     const auto it = failures_.find(req.path);
 
@@ -119,13 +122,13 @@ namespace {
             if(port == 0)
                 return false;
 
-            listenThread_ = std::thread([this]{ server_.listen_after_bind(); });
+            listenThread_ = std::thread([this] -> void { server_.listen_after_bind(); });
             listenThread_.detach();
             return true;
         }
 
         auto setupOn(int desiredPort) -> bool {
-            const auto handler = [this](const httplib::Request &req, httplib::Response &res){
+            const auto handler = [this](const httplib::Request &req, httplib::Response &res) -> void {
                 nlohmann::json body = nullptr;
 
                 try{
@@ -139,8 +142,8 @@ namespace {
                 }
 
                 {
-                    std::lock_guard lock(mutex_);
-                    records_.push_back({req.path, body});
+                    std::scoped_lock lock(mutex_);
+                    records_.push_back({.path=req.path, .body=body});
 
                     const auto it = failures_.find(req.path);
 
@@ -167,18 +170,18 @@ namespace {
                 return false;
 
             port = desiredPort;
-            listenThread_ = std::thread([this]{ server_.listen_after_bind(); });
+            listenThread_ = std::thread([this] -> void { server_.listen_after_bind(); });
             listenThread_.detach();
             return true;
         }
 
         void failPath(const std::string &path, int status, std::string body){
-            std::lock_guard lock(mutex_);
-            failures_[path] = {status, std::move(body)};
+            std::scoped_lock lock(mutex_);
+            failures_[path] = {.status=status, .body=std::move(body)};
         }
 
         void clearFailures(){
-            std::lock_guard lock(mutex_);
+            std::scoped_lock lock(mutex_);
             failures_.clear();
         }
 
@@ -194,7 +197,7 @@ namespace {
         }
 
         auto calls() const -> std::vector<RequestLog> {
-            std::lock_guard lock(mutex_);
+            std::scoped_lock lock(mutex_);
             return records_;
         }
 
