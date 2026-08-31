@@ -12,7 +12,7 @@
 namespace frostmonitor {
     struct CpuSample {
         std::optional<double> tempC;
-        int utilizationPct;
+        int utilizationPct{0};
     };
 
     enum class CpuError : std::uint8_t {
@@ -29,7 +29,7 @@ auto toString(CpuError error) -> const char*;
     private:
         struct QueryDeleter {
             void operator()(void *q) const noexcept {
-                if(q) 
+                if(q != nullptr) 
                     PdhCloseQuery(static_cast<PDH_HQUERY>(q));
             }
         };

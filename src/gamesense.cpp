@@ -2,7 +2,9 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <charconv>
+#include <cctype>
 #include <fstream>
 #include <sstream>
 #include <utility>
@@ -93,11 +95,17 @@ namespace frostmonitor {
 
     GameSenseClient::GameSenseClient(Settings settings, std::string game, std::vector<GameSenseEvent> events)
         : settings_(std::move(settings)), game_(std::move(game)), events_(std::move(events)) {
+        std::ranges::transform(game_, game_.begin(),
+            [](unsigned char c) -> char { 
+                return static_cast<char>(std::toupper(c)); 
+            });
+            
         worker_ = std::jthread([this](const std::stop_token &stopToken) -> void {
             runWorker(stopToken);
         });
     }
 
+    // NOLINTNEXTLINE(bugprone-exception-escape)
     GameSenseClient::~GameSenseClient(){
         worker_.request_stop();
 
@@ -151,6 +159,7 @@ namespace frostmonitor {
         return failures_.load(std::memory_order_relaxed);
     }
 
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity)
     void GameSenseClient::runWorker(const std::stop_token &stopToken){
         auto backOff = settings_.initialBackoff;
         bool wasLive = false;

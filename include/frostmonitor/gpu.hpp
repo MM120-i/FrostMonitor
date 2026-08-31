@@ -45,6 +45,7 @@ namespace frostmonitor {
         static auto create() -> std::expected<GpuMonitor, GpuError>;
 
         GpuMonitor(const GpuMonitor &) = delete;
+        GpuMonitor(GpuMonitor && /*other*/) noexcept;
         GpuMonitor &operator = (const GpuMonitor &) = delete;  
         GpuMonitor &operator = (GpuMonitor &&other) noexcept;  
         ~GpuMonitor();
