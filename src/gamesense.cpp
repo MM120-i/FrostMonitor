@@ -2,7 +2,9 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <charconv>
+#include <cctype>
 #include <fstream>
 #include <sstream>
 #include <utility>
@@ -93,6 +95,11 @@ namespace frostmonitor {
 
     GameSenseClient::GameSenseClient(Settings settings, std::string game, std::vector<GameSenseEvent> events)
         : settings_(std::move(settings)), game_(std::move(game)), events_(std::move(events)) {
+        std::ranges::transform(game_, game_.begin(),
+            [](unsigned char c) -> char { 
+                return static_cast<char>(std::toupper(c)); 
+            });
+            
         worker_ = std::jthread([this](const std::stop_token &stopToken) -> void {
             runWorker(stopToken);
         });
@@ -158,7 +165,6 @@ namespace frostmonitor {
         bool wasLive = false;
         bool firstCycle = true;
 
-        // Loop body is too large, shorten it
         while(!stopToken.stop_requested()){
             if(!firstCycle){
                 std::unique_lock lock(cvMutex_);

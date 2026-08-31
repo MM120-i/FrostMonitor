@@ -12,7 +12,7 @@
 namespace frostmonitor {
     struct CpuSample {
         std::optional<double> tempC;
-        int utilizationPct;
+        int utilizationPct{0};
     };
 
     enum class CpuError : std::uint8_t {
@@ -29,7 +29,7 @@ auto toString(CpuError error) -> const char*;
     private:
         struct QueryDeleter {
             void operator()(void *q) const noexcept {
-                if(q) // NOLINT(readability-implicit-bool-conversion)
+                if(q != nullptr) 
                     PdhCloseQuery(static_cast<PDH_HQUERY>(q));
             }
         };
@@ -47,9 +47,9 @@ auto toString(CpuError error) -> const char*;
         static auto create() -> std::expected<CpuMonitor, CpuError>;
 
         CpuMonitor(const CpuMonitor &) = delete;
-        CpuMonitor &operator = (const CpuMonitor &) = delete;   // NOLINT(modernize-use-trailing-return-type)
+        CpuMonitor &operator = (const CpuMonitor &) = delete;  
         CpuMonitor(CpuMonitor &&) noexcept = default;
-        CpuMonitor &operator = (CpuMonitor &&) noexcept = default;  // NOLINT(modernize-use-trailing-return-type)
+        CpuMonitor &operator = (CpuMonitor &&) noexcept = default; 
         ~CpuMonitor() = default;
 
         auto read() -> std::expected<CpuSample, CpuError>;
