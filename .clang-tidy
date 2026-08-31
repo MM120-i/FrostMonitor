@@ -14,7 +14,8 @@ Checks: >
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
   -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
   -cppcoreguidelines-pro-type-reinterpret-cast,
-  -cppcoreguidelines-owning-memory
+  -cppcoreguidelines-owning-memory,
+  -modernize-use-trailing-return-type
 
 WarningsAsErrors: ''
 HeaderFilterRegex: 'frostmonitor'

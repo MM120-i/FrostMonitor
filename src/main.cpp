@@ -22,7 +22,7 @@ namespace {
             case CTRL_CLOSE_EVENT:
                 spdlog::info("shutdown signal received");
 
-                if(gPipeline)
+                if(gPipeline != nullptr)
                     gPipeline->requestStop();
 
                 return TRUE;

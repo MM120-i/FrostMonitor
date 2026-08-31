@@ -36,6 +36,8 @@ namespace frostmonitor {
                 spdlog::error("GPU Sensor: {}", toString(gpuCreated.error()));
                 return 2;
             }
+
+            gpu_ = std::move(*gpuCreated);
         }
 
         client_ = createGameSenseClient(config_);
@@ -63,6 +65,11 @@ namespace frostmonitor {
         cv_.notify_all();
     }
 
+    void Pipeline::resume(){
+        paused_.store(false, std::memory_order_relaxed);
+        cv_.notify_all();
+    }
+
     auto Pipeline::isPaused() const noexcept -> bool {
         return paused_.load(std::memory_order_relaxed);
     }
@@ -79,7 +86,6 @@ namespace frostmonitor {
         });
     }
 
-    // NOLINTNEXTLINE(readability-function-cognitive-complexity)
     void Pipeline::workerLoop(const std::stop_token &stopToken){
         while(!stopToken.stop_requested()){
             if(paused_.load(std::memory_order_relaxed)){
@@ -100,6 +106,11 @@ namespace frostmonitor {
                 gpuLine = "GPU 55C | 12%";
             }
             else{
+                if(!cpu_.has_value() || !gpu_.has_value()){
+                    spdlog::error("Sensors not initialized");
+                    break;
+                }
+
                 auto cpuSample = cpu_->read();
 
                 if(!cpuSample){

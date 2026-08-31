@@ -43,7 +43,9 @@ namespace frostmonitor {
         ~Pipeline();
 
         Pipeline(const Pipeline &) = delete;
+        Pipeline(Pipeline &&) = delete;
         Pipeline &operator = (const Pipeline &) = delete;
+        Pipeline &operator = (Pipeline &&) = delete;
 
         auto run() -> int;
         void requestStop();

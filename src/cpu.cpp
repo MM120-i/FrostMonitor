@@ -6,7 +6,7 @@
 
 namespace {
     auto pdhDoubleValue(const PDH_FMT_COUNTERVALUE &value) -> double {
-        return value.doubleValue; // NOLINT(cppcoreguidelines-pro-type-union-access)
+        return value.doubleValue; 
     }
 }
 

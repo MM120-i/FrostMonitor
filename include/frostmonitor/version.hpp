@@ -4,7 +4,7 @@
 
 namespace frostmonitor {    
     #ifndef FROSTMON_VERSION
-        #define FROSTMON_VERSION "0.0.0-dev" // NOLINT(cppcoreguidelines-macro-usage)
+        #define FROSTMON_VERSION "0.0.0-dev" 
     #endif
 
     enum class ExitCode: std::uint8_t {

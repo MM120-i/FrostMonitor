@@ -98,7 +98,6 @@ namespace frostmonitor {
         });
     }
 
-    // NOLINTNEXTLINE(bugprone-exception-escape)
     GameSenseClient::~GameSenseClient(){
         worker_.request_stop();
 
@@ -152,13 +151,11 @@ namespace frostmonitor {
         return failures_.load(std::memory_order_relaxed);
     }
 
-    // NOLINTNEXTLINE(readability-function-cognitive-complexity)
     void GameSenseClient::runWorker(const std::stop_token &stopToken){
         auto backOff = settings_.initialBackoff;
         bool wasLive = false;
         bool firstCycle = true;
 
-        // Loop body is too large, shorten it
         while(!stopToken.stop_requested()){
             if(!firstCycle){
                 std::unique_lock lock(cvMutex_);
