@@ -9,7 +9,8 @@
   },
   "events": {
     "cpu": { "name": "CPU_STATS", "min": 0, "max": 100 },
-    "gpu": { "name": "GPU_STATS", "min": 0, "max": 100 }
+    "gpu": { "name": "GPU_STATS", "min": 0, "max": 100 },
+    "fps": { "name": "FPS_STATS", "min": 0, "max": 300 }
   },
   "logging": {
     "level": "debug",

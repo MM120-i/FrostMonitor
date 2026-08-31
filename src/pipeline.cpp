@@ -1,6 +1,7 @@
 #include "../include/frostmonitor/pipeline.hpp"
 #include "../include/frostmonitor/format.hpp"
 #include "../include/frostmonitor/version.hpp"
+#include "../include/frostmonitor/fps.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -8,7 +9,7 @@
 
 namespace frostmonitor {
     Pipeline::Pipeline(Config config, bool demoMode)
-        : config_(std::move(config)), demoMode_(demoMode) {
+        : config_(std::move(config)), demoMode_(demoMode), fps_(std::nullopt) {
     }
 
     Pipeline::~Pipeline(){
@@ -25,7 +26,7 @@ namespace frostmonitor {
 
             if(!cpuCreated){
                 spdlog::error("CPU Sensor: {}", toString(cpuCreated.error()));
-                return 2;   // TODO: Change this 2 to an enum value
+                return static_cast<int>(ExitCode::SENSOR_ERROR);
             }
 
             cpu_ = std::move(*cpuCreated);
@@ -34,10 +35,17 @@ namespace frostmonitor {
 
             if(!gpuCreated){
                 spdlog::error("GPU Sensor: {}", toString(gpuCreated.error()));
-                return 2;
+                return static_cast<int>(ExitCode::SENSOR_ERROR);
             }
 
             gpu_ = std::move(*gpuCreated);
+
+            auto fpsCreated = FpsMonitor::create();
+
+            if(fpsCreated)
+                fps_ = std::move(*fpsCreated);
+            else
+                spdlog::info("FPS Sensor: {} (RTSS not running?)", toString(fpsCreated.error()));
         }
 
         client_ = createGameSenseClient(config_);
@@ -51,11 +59,17 @@ namespace frostmonitor {
             workerLoop(st);
         });
 
+        if(stopRequested_.exchange(false, std::memory_order_relaxed)){
+            worker_.request_stop();
+            cv_.notify_all();
+        }
+
         worker_.join();
         return EXIT_SUCCESS;
     }
 
     void Pipeline::requestStop(){
+        stopRequested_.store(true, std::memory_order_relaxed);
         worker_.request_stop();
         cv_.notify_all();
     }
@@ -86,7 +100,7 @@ namespace frostmonitor {
         });
     }
 
-    void Pipeline::workerLoop(const std::stop_token &stopToken){
+    void Pipeline::workerLoop(const std::stop_token &stopToken){ // NOLINT(readability-function-cognitive-complexity)
         while(!stopToken.stop_requested()){
             if(paused_.load(std::memory_order_relaxed)){
                 std::unique_lock lock(cvMutex_);
@@ -133,11 +147,25 @@ namespace frostmonitor {
                 gpuLine = formatGpuLine(gpuSample->tempC, gpuSample->utilizationPct);
             }
 
+            std::string fpsLine;
+
+            if(fps_){
+                auto fpsSample = fps_->read();
+
+                if(fpsSample)
+                    fpsLine = formatFpsLine(fpsSample->fps);
+                else
+                    stats_.droppedFpsReads++;
+            }
+
             spdlog::debug("cycle {}: {} | {}", stats_.totalCycles, cpuLine, gpuLine);
 
             if(client_){
                 client_->send(config_.cpuEvent.name, cpuLine);
                 client_->send(config_.gpuEvent.name, gpuLine);
+
+                if(!fpsLine.empty())
+                    client_->send(config_.fpsEvent.name, fpsLine);
             }
 
             stats_.totalCycles++;

@@ -65,6 +65,14 @@ namespace frostmonitor {
                     cfg.gpuEvent.min = gpu->value("min", cfg.gpuEvent.min);
                     cfg.gpuEvent.max = gpu->value("max", cfg.gpuEvent.max);
                 }
+
+                auto fps = require<nlohmann::json>(*events, "fps");
+
+                if(fps){
+                    cfg.fpsEvent.name = fps->value("name", cfg.fpsEvent.name);
+                    cfg.fpsEvent.min = fps->value("min", cfg.fpsEvent.min);
+                    cfg.fpsEvent.max = fps->value("max", cfg.fpsEvent.max);
+                }
             }
 
             auto logging = require<nlohmann::json>(root, "logging");

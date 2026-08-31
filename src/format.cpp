@@ -21,4 +21,8 @@ namespace frostmonitor {
     auto formatGpuLine(double tempC, int utilizationPct) -> std::string {
         return std::format("GPU {:.1f}°C | {}%", tempC, clampPercent(utilizationPct));
     }
+
+    auto formatFpsLine(int fps) -> std::string {
+        return std::format("FPS {}", std::clamp(fps, 0, 999));
+    }
 }

@@ -12,6 +12,7 @@
 #include "config.hpp"
 #include "gamesense.hpp"
 #include "cpu.hpp"
+#include "fps.hpp"
 #include "gpu.hpp"
 
 namespace frostmonitor {
@@ -19,6 +20,7 @@ namespace frostmonitor {
         unsigned long totalCycles{0};
         unsigned long droppedCpuReads{0};
         unsigned long droppedGpuReads{0};
+        unsigned long droppedFpsReads{0};
     };
 
     class Pipeline {
@@ -31,12 +33,14 @@ namespace frostmonitor {
         PipelineStats stats_{};
         
         std::atomic_bool paused_{false};
+        std::atomic_bool stopRequested_{false};
         std::jthread worker_;
         std::condition_variable_any cv_;
         std::mutex cvMutex_;
         std::unique_ptr<GameSenseClient> client_;
         std::optional<CpuMonitor> cpu_;
         std::optional<GpuMonitor> gpu_;
+        std::optional<FpsMonitor> fps_;
 
     public:
         Pipeline(Config config, bool demoMode = false);

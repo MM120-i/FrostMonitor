@@ -86,8 +86,21 @@ namespace frostmonitor {
             spdlog::warn("GameSense not reachable at startup - will keep trying in the background");
 
         std::vector<GameSenseEvent> events {
-            {.name=config.cpuEvent.name, .min=config.cpuEvent.min, .max=config.cpuEvent.max},
-            {.name=config.gpuEvent.name, .min=config.gpuEvent.min, .max=config.gpuEvent.max},
+            {
+                .name = config.cpuEvent.name, 
+                .min = config.cpuEvent.min, 
+                .max = config.cpuEvent.max
+            },
+            {
+                .name = config.gpuEvent.name, 
+                .min = config.gpuEvent.min, 
+                .max = config.gpuEvent.max
+            },
+            {
+                .name = config.fpsEvent.name,
+                .min = config.fpsEvent.min,
+                .max = config.fpsEvent.max,
+            }
         };
         
         return std::make_unique<GameSenseClient>(std::move(settings), config.appName, std::move(events));
