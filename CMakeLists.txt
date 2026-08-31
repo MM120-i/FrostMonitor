@@ -14,7 +14,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
 
-set(CORE_SOURCES src/config.cpp src/cpu.cpp src/gpu.cpp src/format.cpp src/gamesense.cpp)
+set(CORE_SOURCES src/config.cpp src/cpu.cpp src/gpu.cpp src/format.cpp src/gamesense.cpp src/pipeline.cpp)
 
 add_library(FrostMonitorCore STATIC ${CORE_SOURCES})
 
