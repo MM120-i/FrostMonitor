@@ -67,7 +67,7 @@ call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\v
 if errorlevel 1 exit /b 1
 cmake --preset lint || exit /b 1
 echo [dev] running clang-tidy...
-"%CLANG_TIDY%" --warnings-as-errors=* -p build\lint src\main.cpp src\config.cpp src\cpu.cpp src\gpu.cpp src\format.cpp src\gamesense.cpp src\pipeline.cpp tests\test_config.cpp tests\test_format.cpp tests\test_version.cpp tests\test_gamesense.cpp tests\test_pipeline.cpp || exit /b 1
+"%CLANG_TIDY%" --warnings-as-errors=* -p build\lint src\main.cpp src\config.cpp src\cpu.cpp src\gpu.cpp src\format.cpp src\gamesense.cpp src\pipeline.cpp src\fps.cpp tests\test_config.cpp tests\test_format.cpp tests\test_version.cpp tests\test_gamesense.cpp tests\test_pipeline.cpp tests\test_fps.cpp || exit /b 1
 echo [dev] lint ok
 exit /b 0
 

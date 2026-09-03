@@ -1,6 +1,7 @@
 #include "../include/frostmonitor/pipeline.hpp"
 #include "../include/frostmonitor/format.hpp"
 #include "../include/frostmonitor/version.hpp"
+#include "../include/frostmonitor/fps.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -8,15 +9,21 @@
 
 namespace frostmonitor {
     Pipeline::Pipeline(Config config, bool demoMode)
-        : config_(std::move(config)), demoMode_(demoMode) {
+        : config_(std::move(config)), demoMode_(demoMode), fps_(std::nullopt) {
     }
 
     Pipeline::~Pipeline(){
-        if(worker_.joinable()){
-            worker_.request_stop();
-            cv_.notify_all();
-            worker_.join();
+        {
+            std::scoped_lock lock(workerMutex_);
+
+            if(worker_.joinable())
+                worker_.request_stop();
         }
+
+        cv_.notify_all();
+
+        if(worker_.joinable())
+            worker_.join();
     }
 
     auto Pipeline::run() -> int {
@@ -25,7 +32,7 @@ namespace frostmonitor {
 
             if(!cpuCreated){
                 spdlog::error("CPU Sensor: {}", toString(cpuCreated.error()));
-                return 2;   // TODO: Change this 2 to an enum value
+                return static_cast<int>(ExitCode::SENSOR_ERROR);
             }
 
             cpu_ = std::move(*cpuCreated);
@@ -34,10 +41,17 @@ namespace frostmonitor {
 
             if(!gpuCreated){
                 spdlog::error("GPU Sensor: {}", toString(gpuCreated.error()));
-                return 2;
+                return static_cast<int>(ExitCode::SENSOR_ERROR);
             }
 
             gpu_ = std::move(*gpuCreated);
+
+            auto fpsCreated = FpsMonitor::create();
+
+            if(fpsCreated)
+                fps_ = std::move(*fpsCreated);
+            else
+                spdlog::info("FPS Sensor: {} (RTSS not running?)", toString(fpsCreated.error()));
         }
 
         client_ = createGameSenseClient(config_);
@@ -47,16 +61,32 @@ namespace frostmonitor {
         else
             spdlog::info("GameSense disabled");
 
-        worker_ = std::jthread([this](const std::stop_token &st){
-            workerLoop(st);
-        });
+        {
+            std::scoped_lock lock(workerMutex_);
+
+            worker_ = std::jthread([this](const std::stop_token &st){
+                workerLoop(st);
+            });
+        }
+
+        if(stopRequested_.exchange(false, std::memory_order_relaxed)){
+            std::scoped_lock lock(workerMutex_);
+            worker_.request_stop();
+            cv_.notify_all();
+        }
 
         worker_.join();
         return EXIT_SUCCESS;
     }
 
     void Pipeline::requestStop(){
-        worker_.request_stop();
+        stopRequested_.store(true, std::memory_order_relaxed);
+
+        {
+            std::scoped_lock lock(workerMutex_);
+            worker_.request_stop();
+        }
+
         cv_.notify_all();
     }
 
@@ -75,7 +105,12 @@ namespace frostmonitor {
     }
 
     auto Pipeline::stats() const noexcept -> PipelineStats {
-        return stats_;
+        return {
+            .totalCycles=totalCycles_.load(std::memory_order_relaxed),
+            .droppedCpuReads=droppedCpuReads_.load(std::memory_order_relaxed),
+            .droppedGpuReads=droppedGpuReads_.load(std::memory_order_relaxed),
+            .droppedFpsReads=droppedFpsReads_.load(std::memory_order_relaxed)
+        };
     }
 
     void Pipeline::interruptibleSleep() {
@@ -86,7 +121,7 @@ namespace frostmonitor {
         });
     }
 
-    void Pipeline::workerLoop(const std::stop_token &stopToken){
+    void Pipeline::workerLoop(const std::stop_token &stopToken){ // NOLINT(readability-function-cognitive-complexity)
         while(!stopToken.stop_requested()){
             if(paused_.load(std::memory_order_relaxed)){
                 std::unique_lock lock(cvMutex_);
@@ -115,7 +150,7 @@ namespace frostmonitor {
 
                 if(!cpuSample){
                     spdlog::warn("CPU Read failed: {}", toString(cpuSample.error()));
-                    stats_.droppedCpuReads++;
+                    droppedCpuReads_.fetch_add(1, std::memory_order_relaxed);
                     interruptibleSleep();
                     continue;
                 }
@@ -124,7 +159,7 @@ namespace frostmonitor {
 
                 if(!gpuSample){
                     spdlog::warn("GPU Read failed: {}", toString(gpuSample.error()));
-                    stats_.droppedGpuReads++;
+                    droppedGpuReads_.fetch_add(1, std::memory_order_relaxed);
                     interruptibleSleep();
                     continue;
                 }
@@ -133,21 +168,35 @@ namespace frostmonitor {
                 gpuLine = formatGpuLine(gpuSample->tempC, gpuSample->utilizationPct);
             }
 
-            spdlog::debug("cycle {}: {} | {}", stats_.totalCycles, cpuLine, gpuLine);
+            std::string fpsLine;
+
+            if(fps_){
+                auto fpsSample = fps_->read();
+
+                if(fpsSample)
+                    fpsLine = formatFpsLine(fpsSample->fps);
+                else
+                    droppedFpsReads_.fetch_add(1, std::memory_order_relaxed);
+            }
+
+            spdlog::debug("cycle {}: {} | {}", totalCycles_.load(std::memory_order_relaxed), cpuLine, gpuLine);
 
             if(client_){
                 client_->send(config_.cpuEvent.name, cpuLine);
                 client_->send(config_.gpuEvent.name, gpuLine);
+
+                if(!fpsLine.empty())
+                    client_->send(config_.fpsEvent.name, fpsLine);
             }
 
-            stats_.totalCycles++;
+            const auto cycle = totalCycles_.fetch_add(1, std::memory_order_relaxed) + 1;
 
-            if(stats_.totalCycles % 60 == 0) 
-                spdlog::info("stats: cycles={} dropped_cpu={} dropped_gpu={}", stats_.totalCycles, stats_.droppedCpuReads, stats_.droppedGpuReads);
+            if(cycle % 60 == 0)
+                spdlog::info("stats: cycles={} dropped_cpu={} dropped_gpu={} dropped_fps={}", cycle, droppedCpuReads_.load(std::memory_order_relaxed), droppedGpuReads_.load(std::memory_order_relaxed), droppedFpsReads_.load(std::memory_order_relaxed));
 
-            interruptibleSleep();    
+            interruptibleSleep();
         }
 
-        spdlog::debug("final stats: cycles={} dropped_cpu={} dropped_gpu={}", stats_.totalCycles, stats_.droppedCpuReads, stats_.droppedGpuReads);
+        spdlog::debug("final stats: cycles={} dropped_cpu={} dropped_gpu={} dropped_fps={}", totalCycles_.load(std::memory_order_relaxed), droppedCpuReads_.load(std::memory_order_relaxed), droppedGpuReads_.load(std::memory_order_relaxed), droppedFpsReads_.load(std::memory_order_relaxed));
     }
 }

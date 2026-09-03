@@ -31,8 +31,25 @@ namespace frostmonitor {
         std::chrono::milliseconds pollingInterval{1000};
         bool autoStart{false};
         GamesenseConfig gamesense;
-        EventConfig cpuEvent{.name = "CPU_STATS", .min = 0.0, .max = 100.0};
-        EventConfig gpuEvent{.name = "GPU_STATS", .min = 0.0, .max = 100.0};
+
+        EventConfig cpuEvent{
+            .name = "CPU_STATS", 
+            .min = 0.0, 
+            .max = 100.0
+        };
+
+        EventConfig gpuEvent{
+            .name = "GPU_STATS", 
+            .min = 0.0, 
+            .max = 100.0
+        };
+
+        EventConfig fpsEvent{
+            .name = "FPS_STATS",
+            .min = 0.0,
+            .max = 300.0,
+        };
+        
         LoggingConfig logging;
     };
 

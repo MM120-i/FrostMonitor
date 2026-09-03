@@ -9,6 +9,7 @@ namespace {
     auto demoConfig() -> frostmonitor::Config {
         frostmonitor::Config config;
         config.pollingInterval = std::chrono::milliseconds{10};
+        config.gamesense.registerGame = false;
         return config;
     }
 }
@@ -25,6 +26,7 @@ TEST_CASE("pipeline demo runs and stops cleanly") {
     pipeline.run();
 
     auto s = pipeline.stats();
+    
     CHECK(s.totalCycles > 0);
     CHECK(s.droppedCpuReads == 0);
     CHECK(s.droppedGpuReads == 0);

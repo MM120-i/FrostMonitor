@@ -238,8 +238,8 @@ TEST_CASE("registers metadata, binds both events, sends frames, unregisters on d
         REQUIRE(calls.size() == 3);
 
         CHECK(calls[0].path == "/game_metadata");
-        CHECK(calls[0].body["game"] == "FrostMonitor");
-        CHECK(calls[0].body["game_display_name"] == "FrostMonitor");
+        CHECK(calls[0].body["game"] == "FROSTMONITOR");
+        CHECK(calls[0].body["game_display_name"] == "FROSTMONITOR");
 
         CHECK(calls[1].path == "/bind_game_event");
         CHECK(calls[1].body["event"] == "CPU_STATS");
