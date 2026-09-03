@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <cstddef>
+#include <limits>
 #include <windows.h>
 
 namespace frostmonitor {
@@ -15,6 +17,8 @@ namespace frostmonitor {
                 return "RTSS shared memory has invalid signature";
             case FpsError::UnsupportedVersion:
                 return "RTSS shared memory version too old (need v2.0+)";
+            case FpsError::InvalidLayout:
+                return "RTSS shared memory has invalid array layout";
             case FpsError::NoForegroundProcess:
                 return "no foreground window found";
             case FpsError::ProcessNotFound:
@@ -46,6 +50,37 @@ namespace frostmonitor {
         if(header->version < kRtssMinVersion){
             UnmapViewOfFile(mapping);
             return std::unexpected(FpsError::UnsupportedVersion);
+        }
+
+        const auto entrySize = static_cast<size_t>(header->appEntrySize);
+        const auto arrOffset = static_cast<size_t>(header->appArrOffset);
+        const auto arrSize = static_cast<size_t>(header->appArrSize);
+        constexpr auto maxSize = (std::numeric_limits<size_t>::max)(); // NOLINT(readability-redundant-parentheses)
+
+        if(entrySize < sizeof(RtssAppEntry) || arrOffset < sizeof(RtssHeader)){
+            UnmapViewOfFile(mapping);
+            return std::unexpected(FpsError::InvalidLayout);
+        }
+
+        MEMORY_BASIC_INFORMATION mbi{};
+
+        if(VirtualQuery(mapping, &mbi, sizeof(mbi)) == 0){
+            UnmapViewOfFile(mapping);
+            return std::unexpected(FpsError::MapViewFailed);
+        }
+
+        const auto regionSize = static_cast<size_t>(mbi.RegionSize);
+
+        if(arrSize > 0 && entrySize > maxSize / arrSize){
+            UnmapViewOfFile(mapping);
+            return std::unexpected(FpsError::InvalidLayout);
+        }
+
+        const auto arrBytes = arrSize * entrySize;
+
+        if(arrBytes > maxSize - arrOffset || arrOffset + arrBytes > regionSize){
+            UnmapViewOfFile(mapping);
+            return std::unexpected(FpsError::InvalidLayout);
         }
 
         return FpsMonitor(mapping, header->appArrOffset, header->appEntrySize, header->appArrSize);

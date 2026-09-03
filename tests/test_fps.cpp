@@ -20,8 +20,11 @@ TEST_CASE("formatFpsLine clamps negative") {
 TEST_CASE("fps create fails gracefully when RTSS not running") {
     auto result = frostmonitor::FpsMonitor::create();
 
-    if(!result)
-        CHECK(result.error() == frostmonitor::FpsError::SharedMemoryOpenFailed);
+    if(result)
+        SKIP("RTSS is running, failure path not exercised");
+
+    REQUIRE(!result);
+    CHECK(result.error() == frostmonitor::FpsError::SharedMemoryOpenFailed);
 }
 
 TEST_CASE("struct layout matches expected sizes") {

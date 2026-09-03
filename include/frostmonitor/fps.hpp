@@ -34,6 +34,7 @@ namespace frostmonitor {
         MapViewFailed,
         InvalidSignature,
         UnsupportedVersion,
+        InvalidLayout,
         NoForegroundProcess,
         ProcessNotFound,
     };

@@ -30,11 +30,16 @@ namespace frostmonitor {
 
         Config config_;
         bool demoMode_;
-        PipelineStats stats_{};
-        
+
+        std::atomic<unsigned long> totalCycles_{0};
+        std::atomic<unsigned long> droppedCpuReads_{0};
+        std::atomic<unsigned long> droppedGpuReads_{0};
+        std::atomic<unsigned long> droppedFpsReads_{0};
+
         std::atomic_bool paused_{false};
         std::atomic_bool stopRequested_{false};
         std::jthread worker_;
+        std::mutex workerMutex_;
         std::condition_variable_any cv_;
         std::mutex cvMutex_;
         std::unique_ptr<GameSenseClient> client_;
