@@ -7,6 +7,8 @@ add_executable(FrostMonitorTests
     test_gamesense.cpp
     test_pipeline.cpp
     test_fps.cpp
+    test_autostart.cpp
+    test_single_instance.cpp
 )
 
 target_link_libraries(FrostMonitorTests PRIVATE
