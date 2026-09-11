@@ -11,6 +11,7 @@ namespace frostmonitor {
         SUCCESS = 0,
         CONFIG_ERROR = 1,
         SENSOR_ERROR = 2,
+        ALREADY_RUNNING = 3,
     };
 
     inline constexpr std::string_view appName{"FrostMonitor"};

@@ -191,12 +191,23 @@ namespace frostmonitor {
 
             const auto cycle = totalCycles_.fetch_add(1, std::memory_order_relaxed) + 1;
 
-            if(cycle % 60 == 0)
-                spdlog::info("stats: cycles={} dropped_cpu={} dropped_gpu={} dropped_fps={}", cycle, droppedCpuReads_.load(std::memory_order_relaxed), droppedGpuReads_.load(std::memory_order_relaxed), droppedFpsReads_.load(std::memory_order_relaxed));
+            if(cycle % 60 == 0){
+                spdlog::info("stats: cycles={} dropped_cpu={} dropped_gpu={} dropped_fps={}", 
+                    cycle, 
+                    droppedCpuReads_.load(std::memory_order_relaxed), 
+                    droppedGpuReads_.load(std::memory_order_relaxed), 
+                    droppedFpsReads_.load(std::memory_order_relaxed)
+                );
+            }
 
             interruptibleSleep();
         }
 
-        spdlog::debug("final stats: cycles={} dropped_cpu={} dropped_gpu={} dropped_fps={}", totalCycles_.load(std::memory_order_relaxed), droppedCpuReads_.load(std::memory_order_relaxed), droppedGpuReads_.load(std::memory_order_relaxed), droppedFpsReads_.load(std::memory_order_relaxed));
+        spdlog::debug("final stats: cycles={} dropped_cpu={} dropped_gpu={} dropped_fps={}", 
+            totalCycles_.load(std::memory_order_relaxed), 
+            droppedCpuReads_.load(std::memory_order_relaxed), 
+            droppedGpuReads_.load(std::memory_order_relaxed), 
+            droppedFpsReads_.load(std::memory_order_relaxed)
+        );
     }
 }

@@ -10,12 +10,13 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+add_compile_definitions(UNICODE _UNICODE)
+
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
 
-set(CORE_SOURCES src/config.cpp src/cpu.cpp src/gpu.cpp src/format.cpp src/gamesense.cpp src/pipeline.cpp src/fps.cpp)
-
+set(CORE_SOURCES src/config.cpp src/cpu.cpp src/gpu.cpp src/format.cpp src/gamesense.cpp src/pipeline.cpp src/fps.cpp src/tray.cpp src/autostart.cpp src/single_instance.cpp)
 add_library(FrostMonitorCore STATIC ${CORE_SOURCES})
 
 target_include_directories(FrostMonitorCore PUBLIC include)

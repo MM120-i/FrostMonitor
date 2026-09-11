@@ -1,19 +1,28 @@
+#include <atomic>
 #include <memory>
 #include <filesystem>
 #include <print>
 #include <string_view>
+#include <thread>
 
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
+#include "../include/frostmonitor/autostart.hpp"
 #include "../include/frostmonitor/config.hpp"
 #include "../include/frostmonitor/version.hpp"
 #include "../include/frostmonitor/format.hpp"
 #include "../include/frostmonitor/pipeline.hpp"
+#include "../include/frostmonitor/single_instance.hpp"
+#include "../include/frostmonitor/tray.hpp"
+
+#include <windows.h>
+#include <shellapi.h>
 
 namespace {
     frostmonitor::Pipeline *gPipeline = nullptr; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+    using path = std::filesystem::path;
 
     BOOL WINAPI ctrlHandler(DWORD ctrlType) {
         switch(ctrlType) {
@@ -62,7 +71,7 @@ namespace {
         spdlog::set_default_logger(logger);
     }
 
-    auto runCheckSensors() -> int {
+    int runCheckSensors(){
         auto cpu = frostmonitor::CpuMonitor::create();
 
         if(!cpu) {
@@ -97,25 +106,59 @@ namespace {
         return 0;
     }
 
-    auto run(int argc, char **argv) -> int {
+    struct CliOptions {
+        bool demoMode{false};
+        bool trayMode{false};
+        int argIndex{1};
+    };
+
+    auto parseCliOptions(int argc, char **argv) -> CliOptions {
+        CliOptions options;
+
+        for(; options.argIndex < argc; options.argIndex++){
+            const std::string_view arg{argv[options.argIndex]};
+
+            if(arg == "--demo")
+                options.demoMode = true;
+            else if(arg == "--tray")
+                options.trayMode = true;
+            else
+                break;
+        }
+
+        return options;
+    }
+
+    int run(int argc, char **argv){
         if(argc > 1 && std::string_view(argv[1]) == "--check-sensors")
             return runCheckSensors();
 
-        bool demoMode = false;
-        int argIndex = 1;
+        const auto options = parseCliOptions(argc, argv);
+        const bool demoMode = options.demoMode;
+        const bool trayMode = options.trayMode;
+        const int argIndex = options.argIndex;
 
-        if(argc > 1 && std::string_view(argv[1]) == "--demo") {
-            demoMode = true;
-            argIndex++;
+        if(trayMode){
+            HWND console = GetConsoleWindow();
+
+            if(console != nullptr)
+                ShowWindow(console, SW_HIDE);
         }
 
-        const std::filesystem::path configPath =
-            argc > argIndex ? std::filesystem::path{argv[argIndex]}
-                            : std::filesystem::path{"config/config.json"};
+        frostmonitor::SingleInstanceGuard instance(frostmonitor::kSingleInstanceMutexName);
+
+        if(!instance.isPrimary()){
+            std::println(stderr, "FrostMonitor is already running");
+            return static_cast<int>(frostmonitor::ExitCode::ALREADY_RUNNING);
+        }
+
+        const path configPath =
+            argIndex < argc ? path{argv[argIndex]}
+                            : path{"config/config.json"};
 
         auto config = frostmonitor::loadConfig(configPath);
-        
-        if(!config) {
+
+        if(!config){
             std::println(stderr, "Failed to load config '{}'", configPath.string());
             return EXIT_FAILURE;
         }
@@ -123,13 +166,60 @@ namespace {
         setupLogging(*config);
 
         spdlog::info("{} v{} starting", frostmonitor::appName, frostmonitor::appVersion);
-        spdlog::info("config: {}", configPath.string());
-        spdlog::debug("polling interval: {} ms", config->pollingInterval.count());
+
+        if(!demoMode){
+            const path exePath = frostmonitor::currentExePath();
+            const path absoluteConfig = std::filesystem::absolute(configPath);
+
+            if(!frostmonitor::syncAutoStart(config->autoStart, exePath, absoluteConfig))
+                spdlog::warn("continuing without autostart sync");
+        }
 
         frostmonitor::Pipeline pipeline(std::move(*config), demoMode);
         gPipeline = &pipeline;
 
-        return pipeline.run();
+        const std::wstring openTarget = std::filesystem::absolute(configPath).wstring();
+        const std::string openTargetLog = std::filesystem::absolute(configPath).string();
+
+        frostmonitor::TrayIcon tray(GetModuleHandleW(nullptr), {
+            .onTogglePause = [&]{
+                if(pipeline.isPaused()){
+                    pipeline.resume();
+                    tray.setPaused(false);
+                }
+                else {
+                    pipeline.pause();
+                    tray.setPaused(true);
+                }
+            },
+            .onOpenConfig = [&]{
+                const HINSTANCE result = ShellExecuteW(nullptr, L"open", openTarget.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+
+                if(reinterpret_cast<INT_PTR>(result) <= 32)
+                    spdlog::warn("tray: cannot open config '{}'", openTargetLog);
+            },
+            .onExit = [&]{ pipeline.requestStop(); },
+        });
+
+        std::atomic<int> exitCode{EXIT_SUCCESS};
+        
+        std::jthread pipelineThread([&]{
+            exitCode.store(pipeline.run(), std::memory_order_relaxed);
+            PostMessageW(tray.window(), WM_CLOSE, 0, 0);
+        });
+
+        MSG msg{};
+        BOOL hasMessage = GetMessageW(&msg, nullptr, 0, 0);
+
+        while(hasMessage > 0){
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+            hasMessage = GetMessageW(&msg, nullptr, 0, 0);
+        }
+
+        pipelineThread.join();
+        gPipeline = nullptr;
+        return exitCode.load(std::memory_order_relaxed);
     }
 }
 
