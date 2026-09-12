@@ -113,7 +113,7 @@ namespace {
 
             server_.Post("/game_metadata", handler);
             server_.Post("/bind_game_event", handler);
-            server_.Post("/event", handler);
+            server_.Post("/game_event", handler);
             server_.Post("/remove_game_event", handler);
             server_.Post("/remove_game", handler);
 
@@ -160,7 +160,7 @@ namespace {
 
             server_.Post("/game_metadata", handler);
             server_.Post("/bind_game_event", handler);
-            server_.Post("/event", handler);
+            server_.Post("/game_event", handler);
             server_.Post("/remove_game_event", handler);
             server_.Post("/remove_game", handler);
 
@@ -246,11 +246,11 @@ TEST_CASE("registers metadata, binds both events, sends frames, unregisters on d
         CHECK(calls[1].body["value_optional"] == true);
         CHECK(calls[1].body["min_value"] == 0.0);
         CHECK(calls[1].body["max_value"] == 100.0);
-        CHECK(calls[1].body["handler"]["device-type"] == "screened");
-        CHECK(calls[1].body["handler"]["zone"] == "one");
-        CHECK(calls[1].body["handler"]["mode"] == "screen");
-        CHECK(calls[1].body["handler"]["datas"][0]["has-text"] == true);
-        CHECK(calls[1].body["handler"]["datas"][0]["context-frame-key"] == "line");
+        CHECK(calls[1].body["handlers"][0]["device-type"] == "screened");
+        CHECK(calls[1].body["handlers"][0]["zone"] == "one");
+        CHECK(calls[1].body["handlers"][0]["mode"] == "screen");
+        CHECK(calls[1].body["handlers"][0]["datas"][0]["has-text"] == true);
+        CHECK(calls[1].body["handlers"][0]["datas"][0]["context-frame-key"] == "line");
 
         CHECK(calls[2].path == "/bind_game_event");
         CHECK(calls[2].body["event"] == "GPU_STATS");
@@ -261,11 +261,11 @@ TEST_CASE("registers metadata, binds both events, sends frames, unregisters on d
         calls = engine.calls();
         REQUIRE(calls.size() == 5);
 
-        CHECK(calls[3].path == "/event");
+        CHECK(calls[3].path == "/game_event");
         CHECK(calls[3].body["event"] == "CPU_STATS");
         CHECK(calls[3].body["data"]["frame"]["line"] == "CPU 42C | 23%");
 
-        CHECK(calls[4].path == "/event");
+        CHECK(calls[4].path == "/game_event");
         CHECK(calls[4].body["event"] == "GPU_STATS");
         CHECK(calls[4].body["data"]["frame"]["line"] == "GPU 55C | 12%");
 
@@ -345,7 +345,7 @@ TEST_CASE("send() is a no-op while disconnected"){
     client->send("GPU_STATS", "GPU 55C | 12%");
 
     const auto calls = engine.calls();
-    CHECK(countCalls(calls, "/event") == 0);
+    CHECK(countCalls(calls, "/game_event") == 0);
 }
 
 TEST_CASE("backoff caps out"){

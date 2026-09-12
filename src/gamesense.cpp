@@ -312,7 +312,7 @@ namespace frostmonitor {
                 {"value_optional", true},
                 {"min_value", event.min},
                 {"max_value", event.max},
-                {"handler", nlohmann::json::object({
+                {"handlers", nlohmann::json::array({nlohmann::json::object({
                     {"device-type", "screened"},
                     {"zone", "one"},
                     {"mode", "screen"},
@@ -320,7 +320,7 @@ namespace frostmonitor {
                         {"has-text", true},
                         {"context-frame-key", "line"}
                     })})}
-                })}
+                })})}
             };
 
             if(!postSucceeds("/bind_game_event", bind))
@@ -370,7 +370,7 @@ namespace frostmonitor {
             std::scoped_lock lock(httpMutex_);
 
             if(http_ != nullptr){
-                auto response = http_->Post("/event", frame.dump(), "application/json");
+                auto response = http_->Post("/game_event", frame.dump(), "application/json");
 
                 if(response == nullptr){
                     connectionLost_.store(true, std::memory_order_relaxed);
